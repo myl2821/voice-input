@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var finalResultTimer: Timer?
 
     private var enableMenuItem: NSMenuItem!
+    private var inputSourceSwitchingMenuItem: NSMenuItem!
     private var llmMenuItem: NSMenuItem!
     private lazy var settingsWindow = SettingsWindow()
     private var languageItems: [NSMenuItem] = []
@@ -183,6 +184,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         enableMenuItem.state = .on
         menu.addItem(enableMenuItem)
 
+        inputSourceSwitchingMenuItem = NSMenuItem(title: "Switch Input Source on Paste", action: #selector(toggleInputSourceSwitching), keyEquivalent: "")
+        inputSourceSwitchingMenuItem.target = self
+        inputSourceSwitchingMenuItem.state = textInjector.isInputSourceSwitchingEnabled ? .on : .off
+        menu.addItem(inputSourceSwitchingMenuItem)
+
         menu.addItem(.separator())
 
         let langItem = NSMenuItem(title: "Language", action: nil, keyEquivalent: "")
@@ -269,6 +275,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for item in languageItems {
             item.state = (item.representedObject as? String) == code ? .on : .off
         }
+    }
+
+    @objc private func toggleInputSourceSwitching() {
+        textInjector.isInputSourceSwitchingEnabled.toggle()
+        inputSourceSwitchingMenuItem.state = textInjector.isInputSourceSwitchingEnabled ? .on : .off
     }
 
     @objc private func toggleLLM() {

@@ -2,6 +2,11 @@ import AppKit
 import Carbon
 
 final class TextInjector {
+    var isInputSourceSwitchingEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "inputSourceSwitchingEnabled") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "inputSourceSwitchingEnabled") }
+    }
+
     func inject(_ text: String) {
         guard !text.isEmpty else { return }
 
@@ -16,13 +21,18 @@ final class TextInjector {
 
         // If a non-ASCII input source (e.g. Chinese IME) is active, temporarily
         // switch to an ASCII-capable one so the Cmd+V paste is not intercepted.
-        let originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
-        let needSwitch = !isASCIICapable(originalSource)
+        var originalSource: TISInputSource?
+        var needSwitch = false
 
-        if needSwitch {
-            if let asciiSource = findASCIICapableSource() {
-                TISSelectInputSource(asciiSource)
-                usleep(50_000) // 50ms for system to settle
+        if isInputSourceSwitchingEnabled {
+            originalSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+            needSwitch = !isASCIICapable(originalSource!)
+
+            if needSwitch {
+                if let asciiSource = findASCIICapableSource() {
+                    TISSelectInputSource(asciiSource)
+                    usleep(50_000) // 50ms for system to settle
+                }
             }
         }
 
@@ -40,8 +50,8 @@ final class TextInjector {
 
         // Restore input source after paste
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            if needSwitch {
-                TISSelectInputSource(originalSource)
+            if needSwitch, let original = originalSource {
+                TISSelectInputSource(original)
             }
         }
 
