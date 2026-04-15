@@ -69,6 +69,7 @@ final class SpeechEngine {
         request.shouldReportPartialResults = true
         if #available(macOS 13, *) {
             request.addsPunctuation = true
+            request.requiresOnDeviceRecognition = true
         }
         recognitionRequest = request
 
