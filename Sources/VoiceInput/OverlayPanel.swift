@@ -5,6 +5,12 @@ final class OverlayPanel: NSPanel {
     private let label = NSTextField(labelWithString: "")
     private let waveformView = WaveformView()
 
+    var fontSize: CGFloat = 15 {
+        didSet {
+            label.font = .systemFont(ofSize: fontSize, weight: .medium)
+        }
+    }
+
     private let capsuleHeight: CGFloat = 56
     private let hPad: CGFloat = 24
     private let waveSize: CGFloat = 44

@@ -23,6 +23,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         set { UserDefaults.standard.set(newValue, forKey: "selectedLocaleCode") }
     }
 
+    var overlayFontSize: CGFloat {
+        get {
+            let saved = UserDefaults.standard.double(forKey: "overlayFontSize")
+            return saved > 0 ? CGFloat(saved) : 15
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: "overlayFontSize") }
+    }
+
+    private var fontSizeItems: [NSMenuItem] = []
+
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -30,6 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !savedCode.isEmpty {
             speechEngine.locale = Locale(identifier: savedCode)
         }
+
+        overlayPanel.fontSize = overlayFontSize
 
         setupStatusBar()
         setupSpeechCallbacks()
@@ -230,6 +242,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         llmItem.submenu = llmMenu
         menu.addItem(llmItem)
 
+        // Display submenu
+        let displayItem = NSMenuItem(title: "Display", action: nil, keyEquivalent: "")
+        let displayMenu = NSMenu()
+
+        let fontSizes: [(String, CGFloat)] = [
+            ("Small (12pt)", 12),
+            ("Medium (15pt)", 15),
+            ("Large (20pt)", 20),
+            ("Extra Large (24pt)", 24),
+        ]
+        let currentSize = overlayFontSize
+        for (name, size) in fontSizes {
+            let item = NSMenuItem(title: name, action: #selector(changeFontSize(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = size
+            item.state = size == currentSize ? .on : .off
+            fontSizeItems.append(item)
+            displayMenu.addItem(item)
+        }
+
+        displayItem.submenu = displayMenu
+        menu.addItem(displayItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit VoiceInput", action: #selector(quit), keyEquivalent: "q")
@@ -291,6 +326,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openLLMSettings() {
         settingsWindow.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func changeFontSize(_ sender: NSMenuItem) {
+        guard let size = sender.representedObject as? CGFloat else { return }
+        overlayFontSize = size
+        overlayPanel.fontSize = size
+
+        for item in fontSizeItems {
+            item.state = (item.representedObject as? CGFloat) == size ? .on : .off
+        }
     }
 
     @objc private func quit() {
