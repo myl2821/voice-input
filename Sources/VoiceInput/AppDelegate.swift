@@ -1,6 +1,44 @@
 import AppKit
 import Speech
 
+// Custom view for font size slider in menu
+final class FontSizeSliderView: NSView {
+    private let slider: NSSlider
+    private let sizeLabel: NSTextField
+    private let onSizeChanged: (CGFloat) -> Void
+
+    init(frame: NSRect, initialSize: CGFloat, onSizeChanged: @escaping (CGFloat) -> Void) {
+        self.onSizeChanged = onSizeChanged
+
+        slider = NSSlider(value: Double(initialSize), minValue: 10, maxValue: 40, target: nil, action: nil)
+        slider.frame = NSRect(x: 15, y: 5, width: 150, height: 20)
+        slider.isContinuous = true
+        slider.target = nil
+
+        sizeLabel = NSTextField(labelWithString: "\(Int(initialSize))pt")
+        sizeLabel.frame = NSRect(x: 170, y: 5, width: 30, height: 20)
+        sizeLabel.font = .systemFont(ofSize: 11)
+
+        super.init(frame: frame)
+
+        slider.target = self
+        slider.action = #selector(sliderChanged(_:))
+
+        addSubview(slider)
+        addSubview(sizeLabel)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func sliderChanged(_ sender: NSSlider) {
+        let newSize = CGFloat(sender.doubleValue)
+        sizeLabel.stringValue = "\(Int(newSize))pt"
+        onSizeChanged(newSize)
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let keyMonitor = KeyMonitor()
@@ -31,7 +69,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         set { UserDefaults.standard.set(Double(newValue), forKey: "overlayFontSize") }
     }
 
-    private var fontSizeItems: [NSMenuItem] = []
 
     // MARK: - Lifecycle
 
@@ -246,21 +283,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let displayItem = NSMenuItem(title: "Display", action: nil, keyEquivalent: "")
         let displayMenu = NSMenu()
 
-        let fontSizes: [(String, CGFloat)] = [
-            ("Small (12pt)", 12),
-            ("Medium (15pt)", 15),
-            ("Large (20pt)", 20),
-            ("Extra Large (24pt)", 24),
-        ]
-        let currentSize = overlayFontSize
-        for (name, size) in fontSizes {
-            let item = NSMenuItem(title: name, action: #selector(changeFontSize(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = size
-            item.state = size == currentSize ? .on : .off
-            fontSizeItems.append(item)
-            displayMenu.addItem(item)
+        // Font size slider
+        let sliderItem = NSMenuItem()
+        let sliderView = FontSizeSliderView(frame: NSRect(x: 0, y: 0, width: 200, height: 40), initialSize: overlayFontSize) { [weak self] newSize in
+            self?.overlayFontSize = newSize
+            self?.overlayPanel.fontSize = newSize
         }
+        sliderItem.view = sliderView
+        displayMenu.addItem(sliderItem)
 
         displayItem.submenu = displayMenu
         menu.addItem(displayItem)
@@ -328,15 +358,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    @objc private func changeFontSize(_ sender: NSMenuItem) {
-        guard let size = sender.representedObject as? CGFloat else { return }
-        overlayFontSize = size
-        overlayPanel.fontSize = size
-
-        for item in fontSizeItems {
-            item.state = (item.representedObject as? CGFloat) == size ? .on : .off
-        }
-    }
 
     @objc private func quit() {
         keyMonitor.stop()
